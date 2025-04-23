@@ -1,4 +1,4 @@
-# prime-pthreadsCSE440 Parallel Programming – Spring 2025
+prime-pthreadsCSE440 Parallel Programming – Spring 2025
 Midterm Project: Multithreaded Prime Number Detection
 Student : Buse Çoban — 20200808070
 Repo    : github.com/busecoban/prime-pthreads
@@ -7,9 +7,18 @@ Build
 -----
 make            # produces ./primemt
 
+
+
 Run
 ---
 ./primemt <threads>        (threads = 1 2 4 … 2048)
+
+or 
+
+./run.sh
+
+
+
 
 Description
 -----------
@@ -19,20 +28,15 @@ using simple trial division, and the main thread prints wall-clock
 time measured with gettimeofday(). No shared data structures other
 than the final summation (after join), so it is race-free.
 
+
+
+
+
 Timing results are provided in Results_20200808070.txt.
-
-
 
 
 Initial Timing Results (Trial-Division)
 ------------------------------------------------------------
-
-- **vCPU:** 8  
-- **RAM:** 6 GB  
-- **Disk:** 40 GB virtio-blk  
-- **İşletim Sistemi:** Ubuntu 24.04 LTS  
-- **Test Komutları:** `./primemt <threads>` ve `./primemt_seg <threads>`
-
 Threads: 1, Time taken: 122.439451 seconds
 Threads: 2, Time taken: 79.733729 seconds
 Threads: 4, Time taken: 46.584816 seconds
@@ -46,65 +50,70 @@ Threads: 512, Time taken: 24.088249 seconds
 Threads: 1024, Time taken: 24.177125 seconds
 Threads: 2048, Time taken: 24.079865 seconds
 
-Initial Timing Results (Trial-Division)
-------------------------------
-Threads   Time (s)
--------   -------
-| 1  | 122.44 |
-| 2  | 79.73 |
-| 4  | 46.58 |
-| 8  | 28.43 |
-| 16 | 24.73 |
-| 32 | 24.46 |
-| 64 | 24.16 |
-| 128| 24.09 |
-| 256| 24.09 |
-| 512| 24.09 |
-| 1024| 24.18 |
-| 2048| 24.08 |
 
-### Neden 16 iş parçacığından sonra ~24 s’de plato?
+- Physical Core Limit (8 vCPUs):
+Scaling is near-linear only up to the number of available virtual CPUs. Beyond 8 threads, additional threads contend for the same cores, adding only context-switch overhead without meaningful speed-up.
 
-* **vCPU sınırı (8)**  
-  UTM, konuk Ubuntu’ya 8 sanal çekirdek (vCPU) gösteriyor.  
-  16 ve üzeri iş parçacığında, her sanal çekirdeği en az iki thread paylaşmak zorunda kalıyor. Bu da
-  bağlam değiştirme (context-switch) maliyetini getiriyor.
+- CPU-Bound Nature of Trial Division:
+Every candidate n invokes a √n division loop, making the algorithm heavily compute-bound. While parallelism distributes these loops across cores, each division sequence itself remains strictly serial.
 
-* **Hypervisor zaman paylaşımlı planlama**  
-  QEMU/Apple Virtualization Framework, vCPU’ları gerçek çekirdeklere sırayla
-  atıyor. Hazır‐çalıştır döngüsü arttıkça CPU darboğazı oluşuyor; ek thread’ler hız
-  kazandırmıyor.
+- Amdahl’s Law & Serial Regions:
+Fixed serial tasks—thread creation/joining, timing measurements, and result aggregation—occupy a constant portion of total runtime. As a result, theoretical speed-up is capped well below the ideal 8×.
 
-* **Bellek-bağımlı (trial division) algoritma**  
-  Her iş parçacığı kendi dizisinde tekil sayıları denediği için önbellek
-  paylaşımı sınırlı. Çekirdekler arttıkça bellek bant genişliği ve L2/SLC
-  trafiği sabit kalıyor → ek CPU zamanı boşa gidiyor.
+- Cache & Memory Bandwidth Constraints: 
+Concurrent threads repeatedly read shared data (e.g. the small-primes list), leading to L3 cache contention and memory-bandwidth thrashing. As thread count increases, this memory traffic approaches hardware limits.
+
+- Thread-Management Overhead:
+Launching and scheduling large numbers of threads incurs OS overhead for stack allocation and context switching. When work chunks are small, this overhead can dominate compute time, eroding any incremental gains.
 
 
+Test1
+--------------------------------------------
+(venv) busecoban@busesvm:~/prime-pthreads-1$ make
+make: 'primemt' is up to date.
+(venv) busecoban@busesvm:~/prime-pthreads-1$ ./primemt 1
+Threads: 1, Time taken: 122.231752 seconds
+(venv) busecoban@busesvm:~/prime-pthreads-1$ ./primemt 2
+Threads: 2, Time taken: 78.997726 seconds
+(venv) busecoban@busesvm:~/prime-pthreads-1$ ./primemt 4
+Threads: 4, Time taken: 45.900848 seconds
+(venv) busecoban@busesvm:~/prime-pthreads-1$ ./primemt 8
+Threads: 8, Time taken: 27.695832 seconds
+(venv) busecoban@busesvm:~/prime-pthreads-1$ ./primemt 16
+Threads: 16, Time taken: 24.892340 seconds
+(venv) busecoban@busesvm:~/prime-pthreads-1$ ./primemt 32
+Threads: 32, Time taken: 24.713523 seconds
+(venv) busecoban@busesvm:~/prime-pthreads-1$ ./primemt 64
+Threads: 64, Time taken: 25.020370 seconds
+(venv) busecoban@busesvm:~/prime-pthreads-1$ ./primemt 128
+Threads: 128, Time taken: 24.913054 seconds
+(venv) busecoban@busesvm:~/prime-pthreads-1$ ./primemt 256
+Threads: 256, Time taken: 24.961565 seconds
+(venv) busecoban@busesvm:~/prime-pthreads-1$ ./primemt 512
+Threads: 512, Time taken: 24.107916 seconds
+(venv) busecoban@busesvm:~/prime-pthreads-1$ ./primemt 1024
+Threads: 1024, Time taken: 24.328368 seconds
+(venv) busecoban@busesvm:~/prime-pthreads-1$ ./primemt 2048
+Threads: 2048, Time taken: 24.426025 seconds
 
 
+Test2
+--------------------------------------------
 
-Segmented-Sieve 
-------------------------------------------------------------
+(venv) busecoban@busesvm:~/prime-pthreads-1$ ./run.sh
+Threads: 1, Time taken: 128.439954 seconds
+Threads: 2, Time taken: 81.153724 seconds
+Threads: 4, Time taken: 45.782009 seconds
+Threads: 8, Time taken: 28.463038 seconds
+Threads: 16, Time taken: 25.356585 seconds
+Threads: 32, Time taken: 24.889127 seconds
+Threads: 64, Time taken: 24.845600 seconds
+Threads: 128, Time taken: 24.331159 seconds
+Threads: 256, Time taken: 24.349084 seconds
+Threads: 512, Time taken: 24.218081 seconds
+Threads: 1024, Time taken: 24.434173 seconds
+Threads: 2048, Time taken: 24.637451 seconds
 
-- **vCPU:** 8  
-- **RAM:** 6 GB  
-- **Disk:** 40 GB virtio-blk  
-- **İşletim Sistemi:** Ubuntu 24.04 LTS  
-- **Test Komutları:** `./primemt <threads>` ve `./primemt_seg <threads>`
-
-Threads: 1, Time taken: 1.08 seconds
-Threads: 2, Time taken: 0.56 seconds
-Threads: 4, Time taken: 0.29 seconds
-Threads: 8, Time taken: 0.17 seconds
-Threads: 16, Time taken: 0.19 seconds
-Threads: 32, Time taken: 0.17 seconds
-Threads: 64, Time taken: 0.18 seconds
-Threads: 128, Time taken: 0.17 seconds
-Threads: 256, Time taken: 0.18 seconds
-Threads: 512, Time taken: 0.17 seconds
-Threads: 1024, Time taken: 0.18 seconds
-Threads: 2048, Time taken: 0.18 seconds
 
 
 Segmented-Sieve Timing Results
@@ -128,21 +137,26 @@ Threads   Time (s)
 
 
 
+
+Segmented-Sieve 
+------------------------------------------------------------
+
+Threads: 1, Time taken: 1.08 seconds
+Threads: 2, Time taken: 0.56 seconds
+Threads: 4, Time taken: 0.29 seconds
+Threads: 8, Time taken: 0.17 seconds
+Threads: 16, Time taken: 0.19 seconds
+Threads: 32, Time taken: 0.17 seconds
+Threads: 64, Time taken: 0.18 seconds
+Threads: 128, Time taken: 0.17 seconds
+Threads: 256, Time taken: 0.18 seconds
+Threads: 512, Time taken: 0.17 seconds
+Threads: 1024, Time taken: 0.18 seconds
+Threads: 2048, Time taken: 0.18 seconds
+
+
+
 Trial-Division vs Segmented-Sieve Comparison
 --------------------------------------------
 • Segmented-Sieve is ~100× faster at 1 thread and ~168× faster at 8 threads.  
 • Both plateau beyond 8 threads due to vCPU oversubscription and memory bandwidth limits.
-
-
-VM Hardware Change and Rationale
---------------------------------
-Observed plateau at ~24 s beyond 8 threads:  
-- vCPU limit (8) in VM → oversubscription (multiple threads share each vCPU) → context-switch overhead.  
-- Hypervisor scheduling maps vCPUs onto physical cores in timeslices.  
-
-Solution:  
-Increased VM vCPU to 12 and RAM to 8 GB.  
-Expect continued speedup up to 12 threads; will retest to observe new plateau.
-
-
-

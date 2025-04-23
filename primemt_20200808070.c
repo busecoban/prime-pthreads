@@ -7,6 +7,28 @@
     Output  : Threads: N, Time taken: X.XXXXXX seconds
 */
 
+
+/* 
+ * This program counts the number of prime numbers in the range
+ * [1, MAX] using multiple threads. Each thread is assigned a
+ * subrange of numbers to check for primality.
+ *
+ * The program uses the pthread library for threading and
+ * includes basic error handling for thread creation and memory
+ * allocation.
+ */
+
+ /*
+#ifdef DEBUG
+#  define DBG(fmt, ...) \
+      do { fprintf(stderr, fmt, ##__VA_ARGS__); } while (0)
+#else
+#  define DBG(fmt, ...) \
+      do { } while (0)
+#endif
+*/
+
+
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -112,6 +134,8 @@ int main(int argc, char *argv[]) {
     uint64_t total_primes = 0;
     for (int i = 0; i < nthreads; ++i) {
         pthread_join(tid[i], NULL);
+        /* bu correctness için snra kaldır */
+      //  DBG("Thread %2d found %10lu primes\n", i, seg[i].count);
         total_primes += seg[i].count;
     }
 
