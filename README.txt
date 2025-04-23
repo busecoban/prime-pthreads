@@ -23,7 +23,7 @@ Execution
 
 or
 
-./run.sh                  # runs all thread configurations and logs results
+make run                  # runs all thread configurations and logs results
 
 
 
@@ -94,7 +94,7 @@ Threads: 1024, Time taken: 24.328368 seconds
 Threads: 2048, Time taken: 24.426025 seconds
 
 
-Test with run.sh
+Test with make run
 --------------------------------------------
 
 (venv) busecoban@busesvm:~/prime-pthreads-1$ ./run.sh
