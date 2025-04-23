@@ -1,32 +1,29 @@
 prime-pthreadsCSE440 Parallel Programming – Spring 2025
 Midterm Project: Multithreaded Prime Number Detection
 Student : Buse Çoban — 20200808070
-Repo    : github.com/busecoban/prime-pthreads
+Repo    : https://github.com/busecoban/prime-pthreads
 
-Build
------
-make            # produces ./primemt
+Approach
 
-
-
-Run
----
-./primemt <threads>        (threads = 1 2 4 … 2048)
-
-or 
-
-./run.sh
+Divide the integer range [1, 500,000,000] into N equal segments. Spawn N POSIX threads, each performing a simple trial-division primality test on its assigned subrange. Threads maintain independent counts to avoid synchronization overhead; the main thread aggregates results after pthread_join and reports wall-clock time using gettimeofday().
 
 
 
 
-Description
------------
-The program splits the 1–500 000 000 range into equal sub-ranges,
-spawns N POSIX threads, each thread counts primes in its own chunk
-using simple trial division, and the main thread prints wall-clock
-time measured with gettimeofday(). No shared data structures other
-than the final summation (after join), so it is race-free.
+Compilation
+
+make             # builds ./primemt
+
+
+
+
+Execution
+
+./primemt         # threads = 1 2 4 ... 2048
+
+or
+
+./run.sh                  # runs all thread configurations and logs results
 
 
 
@@ -67,7 +64,7 @@ Concurrent threads repeatedly read shared data (e.g. the small-primes list), lea
 Launching and scheduling large numbers of threads incurs OS overhead for stack allocation and context switching. When work chunks are small, this overhead can dominate compute time, eroding any incremental gains.
 
 
-Test1
+Test with command
 --------------------------------------------
 (venv) busecoban@busesvm:~/prime-pthreads-1$ make
 make: 'primemt' is up to date.
@@ -97,7 +94,7 @@ Threads: 1024, Time taken: 24.328368 seconds
 Threads: 2048, Time taken: 24.426025 seconds
 
 
-Test2
+Test with run.sh
 --------------------------------------------
 
 (venv) busecoban@busesvm:~/prime-pthreads-1$ ./run.sh
