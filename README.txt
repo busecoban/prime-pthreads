@@ -22,7 +22,17 @@ than the final summation (after join), so it is race-free.
 Timing results are provided in Results_20200808070.txt.
 
 
-## İlk Ölçüm Sonuçları (trial-division)
+
+
+Initial Timing Results (Trial-Division)
+------------------------------------------------------------
+
+- **vCPU:** 8  
+- **RAM:** 6 GB  
+- **Disk:** 40 GB virtio-blk  
+- **İşletim Sistemi:** Ubuntu 24.04 LTS  
+- **Test Komutları:** `./primemt <threads>` ve `./primemt_seg <threads>`
+
 Threads: 1, Time taken: 122.439451 seconds
 Threads: 2, Time taken: 79.733729 seconds
 Threads: 4, Time taken: 46.584816 seconds
@@ -36,11 +46,10 @@ Threads: 512, Time taken: 24.088249 seconds
 Threads: 1024, Time taken: 24.177125 seconds
 Threads: 2048, Time taken: 24.079865 seconds
 
-
-## İlk Zaman Ölçümleri (Trial-Division)
-
-| Thread | Süre (s) |
-| :----: | :------: |
+Initial Timing Results (Trial-Division)
+------------------------------
+Threads   Time (s)
+-------   -------
 | 1  | 122.44 |
 | 2  | 79.73 |
 | 4  | 46.58 |
@@ -56,11 +65,84 @@ Threads: 2048, Time taken: 24.079865 seconds
 
 ### Neden 16 iş parçacığından sonra ~24 s’de plato?
 
-* **Fiziksel çekirdek sınırı** aşılınca (M3 Pro’da 8 P + 4 E) çekirdekler paylaşılmaya başlanıyor; bağlam değiştirme (context-switch) ek yük getiriyor.  
-* **Hafıza-bağımlı** algoritma: her iş parçacığı aynı büyük asal test döngüsünü yapıyor, önbellek faydası sınırlı; bellek bant genişliği darboğaz oluyor.  
-* İş başına yük küçüldükçe (64 thread → 7.8 M sayı) planlama maliyeti kazanımdan fazla hâle geliyor.
+* **vCPU sınırı (8)**  
+  UTM, konuk Ubuntu’ya 8 sanal çekirdek (vCPU) gösteriyor.  
+  16 ve üzeri iş parçacığında, her sanal çekirdeği en az iki thread paylaşmak zorunda kalıyor. Bu da
+  bağlam değiştirme (context-switch) maliyetini getiriyor.
 
-> Sonraki adım olarak segmented sieve uygulanacak; iyileşme olmazsa bu plateau raporda tartışılacaktır.
+* **Hypervisor zaman paylaşımlı planlama**  
+  QEMU/Apple Virtualization Framework, vCPU’ları gerçek çekirdeklere sırayla
+  atıyor. Hazır‐çalıştır döngüsü arttıkça CPU darboğazı oluşuyor; ek thread’ler hız
+  kazandırmıyor.
+
+* **Bellek-bağımlı (trial division) algoritma**  
+  Her iş parçacığı kendi dizisinde tekil sayıları denediği için önbellek
+  paylaşımı sınırlı. Çekirdekler arttıkça bellek bant genişliği ve L2/SLC
+  trafiği sabit kalıyor → ek CPU zamanı boşa gidiyor.
+
+
+
+
+
+Segmented-Sieve 
+------------------------------------------------------------
+
+- **vCPU:** 8  
+- **RAM:** 6 GB  
+- **Disk:** 40 GB virtio-blk  
+- **İşletim Sistemi:** Ubuntu 24.04 LTS  
+- **Test Komutları:** `./primemt <threads>` ve `./primemt_seg <threads>`
+
+Threads: 1, Time taken: 1.08 seconds
+Threads: 2, Time taken: 0.56 seconds
+Threads: 4, Time taken: 0.29 seconds
+Threads: 8, Time taken: 0.17 seconds
+Threads: 16, Time taken: 0.19 seconds
+Threads: 32, Time taken: 0.17 seconds
+Threads: 64, Time taken: 0.18 seconds
+Threads: 128, Time taken: 0.17 seconds
+Threads: 256, Time taken: 0.18 seconds
+Threads: 512, Time taken: 0.17 seconds
+Threads: 1024, Time taken: 0.18 seconds
+Threads: 2048, Time taken: 0.18 seconds
+
+
+Segmented-Sieve Timing Results
+------------------------------
+Threads   Time (s)
+-------   -------
+1         1.08
+2         0.56
+4         0.29
+8         0.17
+16        0.19
+32        0.17
+64        0.18
+128       0.17
+256       0.18
+512       0.17
+1024      0.18
+2048      0.18
+
+
+
+
+
+Trial-Division vs Segmented-Sieve Comparison
+--------------------------------------------
+• Segmented-Sieve is ~100× faster at 1 thread and ~168× faster at 8 threads.  
+• Both plateau beyond 8 threads due to vCPU oversubscription and memory bandwidth limits.
+
+
+VM Hardware Change and Rationale
+--------------------------------
+Observed plateau at ~24 s beyond 8 threads:  
+- vCPU limit (8) in VM → oversubscription (multiple threads share each vCPU) → context-switch overhead.  
+- Hypervisor scheduling maps vCPUs onto physical cores in timeslices.  
+
+Solution:  
+Increased VM vCPU to 12 and RAM to 8 GB.  
+Expect continued speedup up to 12 threads; will retest to observe new plateau.
 
 
 
